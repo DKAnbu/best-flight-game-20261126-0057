@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AEROSTRIKE: HORIZON VECTOR — 3D Flight Simulator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="flight-canvas"></canvas>
+
+    <div id="cockpit-overlay" class="hidden">
+      <div class="canopy-frame canopy-left"></div>
+      <div class="canopy-frame canopy-right"></div>
+      <div class="canopy-frame canopy-center"></div>
+      <div class="glare-shield">
+        <div class="gauge gauge-backup-adi">
+          <div class="gauge-dial" id="backup-adi-dial"></div>
+          <span class="gauge-label">BACKUP ATT</span>
+        </div>
+        <div class="gauge gauge-fuel-flow">
+          <div class="gauge-val" id="fuel-flow-val">1200</div>
+          <span class="gauge-label">LBS/HR</span>
+        </div>
+        <div class="gauge gauge-g-meter">
+          <div class="gauge-val" id="g-meter-val">1.0G</div>
+          <span class="gauge-label">G-FORCE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Military Avionics HUD -->
+    <div id="hud-layer">
+      <!-- Top Status Banner -->
+      <div class="hud-top-bar">
+        <div class="hud-box">
+          <span class="hud-sub">SYS</span>
+          <span class="hud-main" id="hud-sys-status">ARMED // READY</span>
+        </div>
+        <div class="hud-box" id="compass-box">
+          <span class="hud-sub">HEADING</span>
+          <span class="hud-main" id="hud-hdg-val">000°</span>
+        </div>
+        <div class="hud-box">
+          <span class="hud-sub">CAMERA [C]</span>
+          <span class="hud-main" id="hud-cam-mode">CHASE VIEW</span>
+        </div>
+      </div>
+
+      <!-- Main Flight Instruments -->
+      <div class="hud-flight-grid">
+        <!-- Airspeed Tape (Left) -->
+        <div class="hud-tape-container hud-speed-container">
+          <span class="hud-tag">IAS KTS</span>
+          <div class="hud-readout-large" id="hud-speed">180</div>
+          <div class="hud-tape" id="hud-speed-tape">
+            <div class="tape-mark">260</div>
+            <div class="tape-mark">240</div>
+            <div class="tape-mark">220</div>
+            <div class="tape-mark">200</div>
+            <div class="tape-mark current-mark">► 180</div>
+            <div class="tape-mark">160</div>
+            <div class="tape-mark">140</div>
+            <div class="tape-mark danger-mark">STALL 110</div>
+          </div>
+          <div class="hud-bar-vertical">
+            <div class="hud-bar-fill" id="hud-throttle-bar" style="height: 60%;"></div>
+          </div>
+          <span class="hud-sub-label">THR: <span id="hud-thr-val">60%</span></span>
+        </div>
+
+        <!-- Center Reticle & Pitch Ladder -->
+        <div class="hud-center-crosshair">
+          <div class="hud-waterline"></div>
+          <div class="hud-fpm" id="hud-flight-path-marker"></div>
+          <div class="hud-target-box" id="hud-target-director">
+            <div class="target-bracket tb-tl"></div>
+            <div class="target-bracket tb-tr"></div>
+            <div class="target-bracket tb-bl"></div>
+            <div class="target-bracket tb-br"></div>
+            <div class="target-dist" id="hud-target-dist">WAYPOINT 850M</div>
+          </div>
+          <div id="hud-stall-warning" class="hud-warning-flash hidden">⚠ STALL WARNING ⚠</div>
+          <div id="hud-pullup-warning" class="hud-warning-flash hidden">⚠ PULL UP - TERRAIN ⚠</div>
+        </div>
+
+        <!-- Altitude Tape (Right) -->
+        <div class="hud-tape-container hud-alt-container">
+          <span class="hud-tag">ALT FT</span>
+          <div class="hud-readout-large" id="hud-alt">2450</div>
+          <div class="hud-tape" id="hud-alt-tape">
+            <div class="tape-mark">3000</div>
+            <div class="tape-mark">2800</div>
+            <div class="tape-mark">2600</div>
+            <div class="tape-mark current-mark">2450 ◄</div>
+            <div class="tape-mark">2200</div>
+            <div class="tape-mark">2000</div>
+            <div class="tape-mark">1800</div>
+            <div class="tape-mark ground-mark">GND 0</div>
+          </div>
+          <div class="hud-bar-vertical">
+            <div class="hud-bar-fill fuel-fill" id="hud-fuel-bar" style="height: 85%;"></div>
+          </div>
+          <span class="hud-sub-label">FUEL: <span id="hud-fuel-val">85%</span></span>
+        </div>
+      </div>
+
+      <!-- Bottom Mission & Nav Panel -->
+      <div class="hud-bottom-bar">
+        <div class="hud-mission-status">
+          <div class="hud-label">SORTIE OBJECTIVE</div>
+          <div class="hud-val" id="hud-mission-text">NAVIGATE CANYON RINGS [0 / 8]</div>
+        </div>
+        <div class="hud-score-status">
+          <div class="hud-label">SCORE / TIME</div>
+          <div class="hud-val"><span id="hud-score">0000</span> | <span id="hud-timer">00:00</span></div>
+        </div>
+        <div class="hud-g-meter">
+          <div class="hud-label">LOAD FACTOR</div>
+          <div class="hud-val" id="hud-gload">+1.0 G</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mission Briefing & Title Modal -->
+    <div id="menu-modal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-subtitle">TACTICAL FLIGHT SIMULATION SYSTEM // VER 1.0</div>
+          <h1 class="modal-title">AEROSTRIKE: HORIZON VECTOR</h1>
+        </div>
+        <div class="modal-body">
+          <p class="mission-desc">
+            Take command of the <strong>AV-77 Osprey-Delta</strong> in a fully procedural 3D aerospace arena.
+            Experience true aerodynamic lift curves, induced drag, high-AoA stalls, engine spool physics, and carrier approach ILS.
+          </p>
+
+          <div class="mission-select-grid">
+            <div class="mission-card active" data-mission="1">
+              <div class="mission-badge">SORTIE 01</div>
+              <div class="mission-name">Canyon Rings Rally</div>
+              <div class="mission-sub">Precision low-level aerobatics through volcanic valley rings.</div>
+            </div>
+            <div class="mission-card" data-mission="2">
+              <div class="mission-badge">SORTIE 02</div>
+              <div class="mission-name">Runway Touchdown Protocol</div>
+              <div class="mission-sub">Align with the lighted island runway, manage glide slope and brake to zero.</div>
+            </div>
+            <div class="mission-card" data-mission="3">
+              <div class="mission-badge">SORTIE 03</div>
+              <div class="mission-name">Island Defense Patrol</div>
+              <div class="mission-sub">Intercept aerial reconnaissance drones and protect naval supply hangars.</div>
+            </div>
+          </div>
+
+          <div class="controls-guide">
+            <div class="ctrl-row"><span>[W] / [S]</span> <strong>Pitch Down / Pitch Up (Elevators)</strong></div>
+            <div class="ctrl-row"><span>[A] / [D]</span> <strong>Roll Left / Roll Right (Ailerons)</strong></div>
+            <div class="ctrl-row"><span>[Q] / [E]</span> <strong>Rudder Yaw Left / Right</strong></div>
+            <div class="ctrl-row"><span>[SHIFT] / [CTRL]</span> <strong>Throttle Up (Afterburner) / Throttle Down (Airbrake)</strong></div>
+            <div class="ctrl-row"><span>[SPACE]</span> <strong>Fire 20mm Vulcan Cannon</strong></div>
+            <div class="ctrl-row"><span>[C]</span> <strong>Toggle Cockpit / Chase Camera View</strong></div>
+            <div class="ctrl-row"><span>[M]</span> <strong>Toggle Audio Synthesizer</strong></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-start-sortie" class="btn-primary">LAUNCH SORTIE [ENTER]</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debrief Modal (Success / Crash / Fuel Out) -->
+    <div id="debrief-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-subtitle">FLIGHT RECORDER TELEMETRY</div>
+          <h2 class="modal-title" id="debrief-title">MISSION ACCOMPLISHED</h2>
+        </div>
+        <div class="modal-body">
+          <div class="telemetry-stats" id="debrief-stats">
+            <!-- Populated via script -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-retry-sortie" class="btn-primary">RE-ENGAGE MISSION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>
